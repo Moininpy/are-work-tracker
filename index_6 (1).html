@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AR-E Work Tracker</title>
+<style>
+  :root {
+    --navy: #0f2942;
+    --navy-light: #1a3a5c;
+    --amber: #d97706;
+    --amber-light: #fef3e2;
+    --green: #15803d;
+    --green-light: #ecfdf3;
+    --red: #b91c1c;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-400: #94a3b8;
+    --gray-600: #475569;
+    --gray-800: #1e293b;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-800);
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ===== LOGIN SCREEN ===== */
+  .login-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 24px;
+    background: var(--navy);
+  }
+  .login-card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px 24px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  }
+  .login-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .login-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .login-sub {
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-bottom: 28px;
+  }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 16px;
+    background: var(--gray-50);
+    transition: border-color 0.15s;
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--navy);
+    background: white;
+  }
+  .btn-primary {
+    width: 100%;
+    padding: 15px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: var(--gray-400); }
+  .login-error {
+    background: #fef2f2;
+    color: var(--red);
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .login-error.show { display: block; }
+
+  /* ===== MAIN APP ===== */
+  .main-screen { display: none; flex: 1; flex-direction: column; }
+  .main-screen.active { display: flex; }
+
+  .topbar {
+    background: var(--navy);
+    color: white;
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-name { font-size: 17px; font-weight: 700; }
+  .topbar-role { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+  .logout-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .job-list {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .list-summary {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .summary-chip {
+    flex: 1;
+    background: white;
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: center;
+    border: 1px solid var(--gray-200);
+  }
+  .summary-chip .num { font-size: 20px; font-weight: 800; color: var(--navy); }
+  .summary-chip .label { font-size: 11px; color: var(--gray-600); margin-top: 2px; font-weight: 600; }
+  .summary-chip.overdue .num { color: var(--red); }
+
+  .refresh-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .refresh-row h2 { font-size: 15px; font-weight: 700; color: var(--gray-800); }
+  .refresh-btn {
+    background: none;
+    border: none;
+    color: var(--navy);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-600);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 16px; color: var(--gray-800); margin-bottom: 6px; }
+  .empty-state p { font-size: 13px; }
+
+  .job-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--gray-200);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .job-card:active { transform: scale(0.99); }
+  .job-card.overdue { border-left: 4px solid var(--red); }
+  .job-card.today { border-left: 4px solid var(--amber); }
+
+  .job-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .job-wo { font-size: 12px; font-weight: 700; color: var(--gray-600); }
+  .job-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .job-badge.today { background: var(--amber-light); color: var(--amber); }
+  .job-badge.overdue { background: #fef2f2; color: var(--red); }
+  .job-badge.in-progress { background: #eff6ff; color: #1d4ed8; }
+  .job-badge.completed { background: var(--green-light); color: var(--green); }
+
+  .job-desc { font-size: 15px; font-weight: 600; color: var(--gray-800); margin-bottom: 4px; line-height: 1.35; }
+  .job-meta { font-size: 13px; color: var(--gray-600); }
+
+  /* ===== JOB DETAIL SCREEN ===== */
+  .detail-screen { display: none; flex: 1; flex-direction: column; background: var(--gray-50); }
+  .detail-screen.active { display: flex; }
+
+  .detail-topbar {
+    background: var(--navy);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .back-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-left: -8px;
+  }
+  .detail-topbar-title { font-size: 15px; font-weight: 700; }
+
+  .detail-body { flex: 1; padding: 20px; overflow-y: auto; }
+
+  .detail-section { margin-bottom: 22px; }
+  .detail-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 6px;
+  }
+  .detail-value { font-size: 15px; color: var(--gray-800); line-height: 1.45; }
+  .detail-value.muted { color: var(--gray-600); }
+
+  .info-card {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .k { color: var(--gray-600); }
+  .info-row .v { font-weight: 600; color: var(--gray-800); text-align: right; }
+
+  .status-options { display: flex; gap: 8px; margin-bottom: 20px; }
+  .status-opt {
+    flex: 1;
+    padding: 12px 8px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    background: white;
+    color: var(--gray-600);
+    transition: all 0.15s;
+  }
+  .status-opt.selected.pending { border-color: var(--gray-400); background: var(--gray-100); color: var(--gray-800); }
+  .status-opt.selected.in-progress { border-color: #1d4ed8; background: #eff6ff; color: #1d4ed8; }
+  .status-opt.selected.completed { border-color: var(--green); background: var(--green-light); color: var(--green); }
+
+  .textarea-wrap { position: relative; }
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 14px 50px 14px 16px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    background: white;
+  }
+  textarea:focus { outline: none; border-color: var(--navy); }
+
+  .mic-btn {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--navy);
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .mic-btn.recording { background: var(--red); animation: pulse 1.2s infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(185,28,28,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(185,28,28,0); }
+  }
+
+  .voice-hint { font-size: 12px; color: var(--gray-400); margin-top: 6px; }
+
+  .submit-bar {
+    padding: 16px 20px 24px;
+    background: white;
+    border-top: 1px solid var(--gray-200);
+  }
+  .btn-submit {
+    width: 100%;
+    padding: 16px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-submit:disabled { background: var(--gray-400); }
+  .btn-submit:active { transform: scale(0.98); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--gray-800);
+    color: white;
+    padding: 14px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 100;
+    transition: transform 0.25s ease;
+    max-width: 90%;
+    text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--red); }
+  .toast.success { background: var(--green); }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-rows { padding: 16px; }
+  .skeleton {
+    height: 84px;
+    background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- LOGIN SCREEN -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-eyebrow">AR-E Electrical</div>
+      <div class="login-title">Work Tracker</div>
+      <div class="login-sub">Sign in to view and update your jobs</div>
+
+      <div class="login-error" id="loginError"></div>
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" autocomplete="username" placeholder="e.g. fadel" autocapitalize="off">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" id="loginBtn" onclick="handleLogin()">Sign in</button>
+    </div>
+  </div>
+
+  <!-- MAIN JOB LIST SCREEN -->
+  <div class="main-screen" id="mainScreen">
+    <div class="topbar">
+      <div>
+        <div class="topbar-name" id="engineerName">—</div>
+        <div class="topbar-role">AR-E Electrical Team</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="logout-btn" onclick="openChangePassword()" title="Change password">🔒</button>
+        <button class="logout-btn" onclick="handleLogout()">Sign out</button>
+      </div>
+    </div>
+
+    <div class="job-list">
+      <div class="list-summary" id="summaryRow" style="display:none;">
+        <div class="summary-chip overdue">
+          <div class="num" id="overdueCount">0</div>
+          <div class="label">Overdue</div>
+        </div>
+        <div class="summary-chip">
+          <div class="num" id="todayCount">0</div>
+          <div class="label">Today</div>
+        </div>
+      </div>
+
+      <div class="refresh-row">
+        <h2>Your jobs</h2>
+        <button class="refresh-btn" onclick="loadJobs()">↻ Refresh</button>
+      </div>
+
+      <div id="jobListContent">
+        <div class="loading-rows">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOB DETAIL SCREEN -->
+  <div class="detail-screen" id="detailScreen">
+    <div class="detail-topbar">
+      <button class="back-btn" onclick="closeDetail()">←</button>
+      <div class="detail-topbar-title" id="detailWoNo">WO —</div>
+    </div>
+
+    <div class="detail-body">
+      <div class="detail-section">
+        <div class="detail-label">Work description</div>
+        <div class="detail-value" id="detailWorkDesc">—</div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-row"><span class="k">KKS ID</span><span class="v" id="detailKksId">—</span></div>
+        <div class="info-row"><span class="k">Location</span><span class="v" id="detailKksDesc">—</span></div>
+        <div class="info-row"><span class="k">Failure / Reason</span><span class="v" id="detailFailure">—</span></div>
+        <div class="info-row"><span class="k">Type</span><span class="v" id="detailType">—</span></div>
+        <div class="info-row"><span class="k">Planned date</span><span class="v" id="detailDate">—</span></div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-label">Status</div>
+        <div class="status-options">
+          <div class="status-opt pending" data-status="Pending" onclick="selectStatus('Pending')">Pending</div>
+          <div class="status-opt in-progress" data-status="In Progress" onclick="selectStatus('In Progress')">In Progress</div>
+          <div class="status-opt completed" data-status="Completed" onclick="selectStatus('Completed')">Completed</div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-label">Work done</div>
+        <div class="textarea-wrap">
+          <textarea id="workDoneInput" placeholder="Type what you did, or tap the mic to speak..."></textarea>
+          <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎤</button>
+        </div>
+        <div class="voice-hint" id="voiceHint">Tap the mic and speak — works best in Chrome</div>
+      </div>
+    </div>
+
+    <div class="submit-bar">
+      <button class="btn-submit" id="submitBtn" onclick="submitUpdate()">Save update</button>
+    </div>
+  </div>
+
+  <!-- CHANGE PASSWORD SCREEN -->
+  <div class="detail-screen" id="pwScreen">
+    <div class="detail-topbar">
+      <button class="back-btn" onclick="closeChangePassword()">←</button>
+      <div class="detail-topbar-title">Change password</div>
+    </div>
+
+    <div class="detail-body">
+      <div class="login-error" id="pwError"></div>
+
+      <div class="field">
+        <label for="pwCurrent">Current password</label>
+        <input type="password" id="pwCurrent" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <div class="field">
+        <label for="pwNew">New password</label>
+        <input type="password" id="pwNew" autocomplete="new-password" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="pwConfirm">Confirm new password</label>
+        <input type="password" id="pwConfirm" autocomplete="new-password" placeholder="Re-enter new password">
+      </div>
+    </div>
+
+    <div class="submit-bar">
+      <button class="btn-submit" id="pwSubmitBtn" onclick="submitPasswordChange()">Update password</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ CONFIG ============
+const API = {
+  login: 'https://moin79.app.n8n.cloud/webhook/are-login',
+  getJobs: 'https://moin79.app.n8n.cloud/webhook/are-get-jobs',
+  updateJob: 'https://moin79.app.n8n.cloud/webhook/are-update-job',
+  changePassword: 'https://moin79.app.n8n.cloud/webhook/are-change-password'
+};
+
+// ============ STATE ============
+let currentUser = null; // { username, displayName }
+let currentJobs = [];
+let selectedJob = null;
+let selectedStatus = null;
+let recognition = null;
+let isRecording = false;
+
+// ============ PERSISTENCE ============
+// Deployed app runs on its own domain (GitHub Pages), so localStorage works normally here.
+const SESSION_KEY = 'are_work_tracker_session';
+
+function saveSession(user) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch (e) {}
+}
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+}
+
+function restoreSession() {
+  const saved = loadSession();
+  if (saved && saved.username) {
+    currentUser = saved;
+    document.getElementById('engineerName').textContent = currentUser.displayName;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainScreen').classList.add('active');
+    loadJobs();
+  }
+}
+
+// ============ TOAST ============
+function showToast(message, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = message;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => { t.className = 'toast'; }, 2800);
+}
+
+// ============ LOGIN ============
+async function handleLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const errorBox = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+
+  errorBox.classList.remove('show');
+
+  if (!username || !password) {
+    errorBox.textContent = 'Enter both username and password.';
+    errorBox.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+  try {
+    const res = await fetch(API.login, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      currentUser = { username: data.username, displayName: data.displayName || data.username };
+      saveSession(currentUser);
+      document.getElementById('engineerName').textContent = currentUser.displayName;
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('mainScreen').classList.add('active');
+      loadJobs();
+    } else {
+      errorBox.textContent = data.message || 'Invalid username or password.';
+      errorBox.classList.add('show');
+    }
+  } catch (err) {
+    errorBox.textContent = 'Could not connect. Check your internet and try again.';
+    errorBox.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+  }
+}
+
+function handleLogout() {
+  clearSession();
+  currentUser = null;
+  currentJobs = [];
+  document.getElementById('username').value = '';
+  document.getElementById('password').value = '';
+  document.getElementById('mainScreen').classList.remove('active');
+  document.getElementById('detailScreen').classList.remove('active');
+  document.getElementById('pwScreen').classList.remove('active');
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ============ LOAD JOBS ============
+async function loadJobs() {
+  const content = document.getElementById('jobListContent');
+  content.innerHTML = '<div class="loading-rows"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
+
+  try {
+    const res = await fetch(API.getJobs, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser.username })
+    });
+    const data = await res.json();
+    currentJobs = data.jobs || [];
+    renderJobs();
+  } catch (err) {
+    content.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <h3>Could not load jobs</h3>
+        <p>Check your connection and tap Refresh.</p>
+      </div>`;
+  }
+}
+
+function renderJobs() {
+  const content = document.getElementById('jobListContent');
+  const summaryRow = document.getElementById('summaryRow');
+
+  // Filter out jobs without a real wo_no (error/message-only responses)
+  const validJobs = currentJobs.filter(j => j.wo_no);
+
+  if (validJobs.length === 0) {
+    summaryRow.style.display = 'none';
+    content.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">✅</div>
+        <h3>All caught up</h3>
+        <p>No jobs scheduled for today, and nothing overdue.</p>
+      </div>`;
+    return;
+  }
+
+  const overdueCount = validJobs.filter(j => j.is_overdue).length;
+  const todayCount = validJobs.length - overdueCount;
+
+  summaryRow.style.display = 'flex';
+  document.getElementById('overdueCount').textContent = overdueCount;
+  document.getElementById('todayCount').textContent = todayCount;
+
+  content.innerHTML = validJobs.map((job, idx) => {
+    const statusClass = (job.status || 'Pending').toLowerCase().replace(' ', '-');
+    const cardClass = job.is_overdue ? 'overdue' : 'today';
+    const badgeClass = job.is_overdue ? 'overdue' : 'today';
+    const badgeText = job.date_label || (job.is_overdue ? 'Overdue' : 'Today');
+
+    return `
+      <div class="job-card ${cardClass}" onclick="openDetail(${idx})">
+        <div class="job-card-top">
+          <span class="job-wo">${escapeHtml(job.wo_no)}</span>
+          <span class="job-badge ${job.status === 'Completed' ? 'completed' : job.status === 'In Progress' ? 'in-progress' : badgeClass}">
+            ${job.status === 'Completed' ? 'Completed' : job.status === 'In Progress' ? 'In Progress' : badgeText}
+          </span>
+        </div>
+        <div class="job-desc">${escapeHtml(job.kks_desc || job.work_description || 'Untitled job')}</div>
+        <div class="job-meta">${escapeHtml(job.failure_description || job.work_description || '').slice(0, 70)}${(job.failure_description || '').length > 70 ? '…' : ''}</div>
+      </div>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============ DETAIL SCREEN ============
+function openDetail(idx) {
+  const validJobs = currentJobs.filter(j => j.wo_no);
+  selectedJob = validJobs[idx];
+  if (!selectedJob) return;
+
+  document.getElementById('detailWoNo').textContent = selectedJob.wo_no;
+  document.getElementById('detailWorkDesc').textContent = selectedJob.work_description || '—';
+  document.getElementById('detailKksId').textContent = selectedJob.kks_id || '—';
+  document.getElementById('detailKksDesc').textContent = selectedJob.kks_desc || '—';
+  document.getElementById('detailFailure').textContent = selectedJob.failure_description || '—';
+  document.getElementById('detailType').textContent = selectedJob.type || selectedJob.nature || '—';
+  document.getElementById('detailDate').textContent = selectedJob.pln_st_date || '—';
+
+  document.getElementById('workDoneInput').value = selectedJob.work_done || '';
+
+  const initialStatus = selectedJob.status || 'Pending';
+  selectStatus(initialStatus);
+
+  document.getElementById('mainScreen').classList.remove('active');
+  document.getElementById('detailScreen').classList.add('active');
+}
+
+function closeDetail() {
+  stopVoiceIfActive();
+  document.getElementById('detailScreen').classList.remove('active');
+  document.getElementById('mainScreen').classList.add('active');
+}
+
+function selectStatus(status) {
+  selectedStatus = status;
+  document.querySelectorAll('.status-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.status === status);
+  });
+}
+
+// ============ VOICE INPUT ============
+function initVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('voiceHint').textContent = 'Voice input not supported on this browser — please type instead.';
+    document.getElementById('micBtn').disabled = true;
+    document.getElementById('micBtn').style.opacity = '0.4';
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event) => {
+    let finalTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript + ' ';
+      }
+    }
+    if (finalTranscript) {
+      const textarea = document.getElementById('workDoneInput');
+      textarea.value = (textarea.value ? textarea.value + ' ' : '') + finalTranscript.trim();
+    }
+  };
+
+  recognition.onerror = () => {
+    showToast('Voice input error — try again or type instead.', 'error');
+    stopVoiceIfActive();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      // restart automatically for continuous listening unless manually stopped
+      try { recognition.start(); } catch(e) { stopVoiceIfActive(); }
+    }
+  };
+}
+
+function toggleVoice() {
+  if (!recognition) {
+    showToast('Voice input not available on this browser.', 'error');
+    return;
+  }
+  if (isRecording) {
+    stopVoiceIfActive();
+  } else {
+    isRecording = true;
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('voiceHint').textContent = 'Listening... tap mic again to stop';
+    try { recognition.start(); } catch(e) {}
+  }
+}
+
+function stopVoiceIfActive() {
+  if (isRecording) {
+    isRecording = false;
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('voiceHint').textContent = 'Tap the mic and speak — works best in Chrome';
+    try { recognition.stop(); } catch(e) {}
+  }
+}
+
+// ============ SUBMIT UPDATE ============
+async function submitUpdate() {
+  const workDone = document.getElementById('workDoneInput').value.trim();
+  const btn = document.getElementById('submitBtn');
+
+  if (!selectedStatus) {
+    showToast('Select a status first.', 'error');
+    return;
+  }
+  if (selectedStatus !== 'Pending' && !workDone) {
+    showToast('Add a note about the work done.', 'error');
+    return;
+  }
+
+  stopVoiceIfActive();
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+  try {
+    const res = await fetch(API.updateJob, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        wo_no: selectedJob.wo_no,
+        work_done: workDone,
+        status: selectedStatus
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('Update saved', 'success');
+      closeDetail();
+      loadJobs();
+    } else {
+      showToast(data.message || 'Could not save update.', 'error');
+    }
+  } catch (err) {
+    showToast('Connection error — please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save update';
+  }
+}
+
+// ============ CHANGE PASSWORD ============
+function openChangePassword() {
+  document.getElementById('pwCurrent').value = '';
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwConfirm').value = '';
+  document.getElementById('pwError').classList.remove('show');
+  document.getElementById('mainScreen').classList.remove('active');
+  document.getElementById('pwScreen').classList.add('active');
+}
+
+function closeChangePassword() {
+  document.getElementById('pwScreen').classList.remove('active');
+  document.getElementById('mainScreen').classList.add('active');
+}
+
+async function submitPasswordChange() {
+  const current = document.getElementById('pwCurrent').value;
+  const next = document.getElementById('pwNew').value;
+  const confirm = document.getElementById('pwConfirm').value;
+  const errorBox = document.getElementById('pwError');
+  const btn = document.getElementById('pwSubmitBtn');
+
+  errorBox.classList.remove('show');
+
+  if (!current || !next || !confirm) {
+    errorBox.textContent = 'Fill in all three fields.';
+    errorBox.classList.add('show');
+    return;
+  }
+  if (next.length < 8) {
+    errorBox.textContent = 'New password must be at least 8 characters.';
+    errorBox.classList.add('show');
+    return;
+  }
+  if (next !== confirm) {
+    errorBox.textContent = 'New password and confirmation do not match.';
+    errorBox.classList.add('show');
+    return;
+  }
+  if (next === current) {
+    errorBox.textContent = 'New password must be different from your current password.';
+    errorBox.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Updating...';
+
+  try {
+    const res = await fetch(API.changePassword, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: currentUser.username,
+        currentPassword: current,
+        newPassword: next
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('Password updated', 'success');
+      closeChangePassword();
+    } else {
+      errorBox.textContent = data.message || 'Could not update password.';
+      errorBox.classList.add('show');
+    }
+  } catch (err) {
+    errorBox.textContent = 'Connection error — please try again.';
+    errorBox.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update password';
+  }
+}
+
+// ============ INIT ============
+document.getElementById('username').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('password').focus();
+});
+document.getElementById('password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+
+initVoice();
+restoreSession();
+</script>
+
+</body>
+</html>
