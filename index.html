@@ -336,6 +336,54 @@
 
   .voice-hint { font-size: 12px; color: var(--gray-400); margin-top: 6px; }
 
+  /* ===== CONTRACTORS ===== */
+  .contractor-row { display: flex; gap: 8px; }
+  .contractor-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    background: white;
+  }
+  .contractor-row input:focus { outline: none; border-color: var(--navy); }
+  .contractor-add {
+    padding: 0 18px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--navy);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip-list:empty { display: none; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 6px 6px 12px;
+    background: var(--amber-light);
+    color: var(--gray-800);
+    border: 1px solid #f5d9a8;
+    border-radius: 999px;
+    font-size: 14px;
+  }
+  .chip button {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(15,41,66,0.1);
+    color: var(--navy);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
   .submit-bar {
     padding: 16px 20px 24px;
     background: white;
@@ -500,6 +548,16 @@
           <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎤</button>
         </div>
         <div class="voice-hint" id="voiceHint">Tap the mic and speak — works best in Chrome</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-label">Contractor(s) worked with</div>
+        <div class="contractor-row">
+          <input type="text" id="contractorInput" placeholder="Contractor name" autocomplete="off">
+          <button type="button" class="contractor-add" onclick="addContractorFromInput()">Add</button>
+        </div>
+        <div class="chip-list" id="contractorChips"></div>
+        <div class="voice-hint">Add one name at a time. Leave empty if no contractor was involved.</div>
       </div>
     </div>
 
@@ -743,6 +801,9 @@ function openDetail(idx) {
   document.getElementById('detailDate').textContent = selectedJob.pln_st_date || '—';
 
   document.getElementById('workDoneInput').value = selectedJob.work_done || '';
+  contractorList = parseContractors(selectedJob.contractors);
+  document.getElementById('contractorInput').value = '';
+  renderContractors();
 
   const initialStatus = selectedJob.status || 'Pending';
   selectStatus(initialStatus);
@@ -842,6 +903,9 @@ async function submitUpdate() {
     return;
   }
 
+  addContractorFromInput();
+  const contractors = contractorList.join(', ');
+
   stopVoiceIfActive();
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Saving...';
@@ -853,6 +917,7 @@ async function submitUpdate() {
       body: JSON.stringify({
         wo_no: selectedJob.wo_no,
         work_done: workDone,
+        contractors: contractors,
         status: selectedStatus
       })
     });
@@ -872,6 +937,56 @@ async function submitUpdate() {
     btn.textContent = 'Save update';
   }
 }
+
+// ============ CONTRACTORS ============
+let contractorList = [];
+
+function parseContractors(value) {
+  return String(value || '')
+    .split(',')
+    .map(n => n.trim())
+    .filter(Boolean);
+}
+
+function addContractorFromInput() {
+  const input = document.getElementById('contractorInput');
+  const names = parseContractors(input.value);
+  names.forEach(name => {
+    const exists = contractorList.some(n => n.toLowerCase() === name.toLowerCase());
+    if (!exists) contractorList.push(name);
+  });
+  input.value = '';
+  renderContractors();
+}
+
+function removeContractor(index) {
+  contractorList.splice(index, 1);
+  renderContractors();
+}
+
+function renderContractors() {
+  const box = document.getElementById('contractorChips');
+  box.innerHTML = '';
+  contractorList.forEach((name, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = name;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '×';
+    x.setAttribute('aria-label', 'Remove ' + name);
+    x.onclick = () => removeContractor(i);
+    chip.appendChild(x);
+    box.appendChild(chip);
+  });
+}
+
+document.getElementById('contractorInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    addContractorFromInput();
+  }
+});
 
 // ============ CHANGE PASSWORD ============
 function openChangePassword() {
